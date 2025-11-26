@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BattBud - Ultimate Edition</title>
+    <!-- Futuristic Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --bg-deep: #050505;
+            --neon-green: #00ff9d;
+            --neon-blue: #00d2ff;
+            --neon-red: #ff0055;
+            --glass-bg: rgba(20, 20, 25, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100dvh; /* Dynamic viewport height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Canvas for Particle Background */
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* --- APP CONTAINER --- */
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            max-height: 900px;
+            position: relative;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 100px rgba(0, 255, 157, 0.1);
+        }
+
+        /* Desktop specific tweak */
+        @media (min-width: 500px) {
+            .app-container {
+                height: 90vh;
+                border-radius: 30px;
+                border: 1px solid rgba(255,255,255,0.15);
+            }
+        }
+
+        /* --- PAGES (SCROLLABLE) --- */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center by default */
+            overflow-y: auto; /* Allow scroll if content is tall */
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1;
+        }
+        
+        /* Fix for scrollable content being cut off at top/bottom */
+        .page-content-wrapper {
+            width: 100%;
+            min-height: min-content; /* Ensure wrapper respects content height */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: auto 0; /* Vertical centering logic */
+        }
+
+        .page.active {
+            opacity: 1;
+            pointer-events: all;
+            z-index: 10;
+            transform: scale(1);
+        }
+
+        /* Custom Scrollbar */
+        .page::-webkit-scrollbar { width: 4px; }
+        .page::-webkit-scrollbar-thumb { background: var(--neon-green); border-radius: 4px; }
+
+        /* --- TYPOGRAPHY & DECORATION --- */
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(180deg, #fff, var(--neon-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(0, 255, 157, 0.5);
+            letter-spacing: 2px;
+        }
+
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--neon-blue);
+            padding-bottom: 5px;
+            width: 100%;
+            text-align: center;
+        }
+
+        p { color: #aaa; text-align: center; line-height: 1.6; }
+
+        /* --- CONTROLS --- */
+        .form-group { width: 100%; margin-bottom: 20px; }
+        
+        .label-text {
+            color: var(--neon-green);
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.2);
+        }
+
+        /* SLIDER STYLING */
+        .slider-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            margin-top: 15px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--bg-deep);
+            border: 2px solid var(--neon-green);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-green);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+
+        .percent-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            color: var(--neon-green);
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+        }
+
+        /* --- BUTTONS --- */
+        .cyber-btn {
+            background: transparent;
+            color: var(--neon-green);
+            border: none; /* We use pseudo-element for border to allow complex shapes if needed */
+            border: 2px solid var(--neon-green);
+            padding: 18px;
+            width: 100%;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            margin-top: 25px;
+            /* Cyberpunk Angle Cut */
+            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+        }
+
+        .cyber-btn:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 40px rgba(0, 255, 157, 0.4);
+        }
+
+        .cyber-btn:active { transform: scale(0.98); }
+
+        .cyber-btn.secondary {
+            border-color: #666;
+            color: #aaa;
+        }
+        .cyber-btn.secondary:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            box-shadow: none;
+        }
+
+        .cyber-btn.stop {
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.2);
+        }
+        .cyber-btn.stop:hover {
+            background: var(--neon-red);
+            color: #fff;
+            box-shadow: 0 0 40px rgba(255, 0, 85, 0.6);
+        }
+
+        /* --- ANIMATIONS & COMPONENTS --- */
+        
+        /* Loading Ring */
+        .loader-ring {
+            width: 120px;
+            height: 120px;
+            border: 4px solid rgba(255,255,255,0.05);
+            border-top: 4px solid var(--neon-green);
+            border-right: 4px solid var(--neon-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            margin: 0 auto 30px auto;
+        }
+
+        /* Countdown */
+        .timer-huge {
+            font-family: 'Orbitron', monospace;
+            font-size: 5rem;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(255,255,255,0.1);
+            line-height: 1;
+            margin: 10px 0;
+        }
+        
+        .timer-unit { font-size: 1rem; color: var(--neon-green); letter-spacing: 5px; text-transform: uppercase; }
+
+        /* Bell */
+        .bell-wrapper {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(0, 255, 157, 0.1), rgba(0, 210, 255, 0.1));
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            margin-bottom: 30px;
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        .bell-icon { font-size: 4rem; filter: drop-shadow(0 0 10px var(--neon-green)); }
+        
+        .ringing { animation: shake 0.5s infinite; color: var(--neon-red) !important; filter: drop-shadow(0 0 20px var(--neon-red)) !important; }
+
+        /* Keyframes */
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes breathe { 0% { box-shadow: 0 0 0 0 rgba(0,255,157,0.2); } 50% { box-shadow: 0 0 20px 0 rgba(0,255,157,0.4); } 100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.2); } }
+        @keyframes shake { 0% { transform: rotate(0); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } 100% { transform: rotate(0); } }
+        @keyframes logoFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+    </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="app-container">
+
+    <!-- PAGE 1: SPLASH SCREEN -->
+    <div id="page-1" class="page active">
+        <div class="page-content-wrapper">
+            <div style="font-size: 5rem; animation: logoFloat 3s ease-in-out infinite;">⚡</div>
+            <h1>BattBud</h1>
+            <p style="letter-spacing: 3px; color: var(--neon-blue); margin-top: 5px; font-weight: 700;">SYSTEM INITIALIZING</p>
+            
+            <div style="width: 220px; height: 4px; background: #222; margin-top: 30px; border-radius: 2px; overflow: hidden;">
+                <div id="loadBar" style="width: 0%; height: 100%; background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); transition: width 2.5s cubic-bezier(0.22, 1, 0.36, 1);"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 2: CONFIGURATION -->
+    <div id="page-2" class="page">
+        <div class="page-content-wrapper">
+            <h2>System Config</h2>
+            
+            <div class="form-group">
+                <span class="label-text">Hardware Type</span>
+                <select id="deviceType" onchange="autoFill()">
+                    <option value="phone">Smartphone</option>
+                    <option value="tablet">Tablet / iPad</option>
+                    <option value="laptop">Laptop / MacBook</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <span class="label-text">Battery Size (mAh)</span>
+                <input type="number" id="capacity" value="4500">
+            </div>
+
+            <div class="form-group">
+                <span class="label-text">Charging Power (Watts)</span>
+                <select id="wattage">
+                    <option value="5">5W (Standard/USB)</option>
+                    <option value="12">12W (Old Fast)</option>
+                    <option value="20">20W (Modern Fast)</option>
+                    <option value="30">30W (Warp/Dart)</option>
+                    <option value="65">65W (Super/Laptop)</option>
+                    <option value="100">100W+ (Hyper)</option>
+                </select>
+            </div>
+
+            <div class="form-group slider-box">
+                <span class="label-text">Current Charge</span>
+                <div class="percent-display" id="percentDisp">20%</div>
+                <input type="range" id="slider" min="1" max="99" value="20" oninput="updateSlider(this.value)">
+                <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.75rem; color:#666; font-weight:700;">
+                    <span>0%</span>
+                    <span style="color:var(--neon-green)">TARGET: 80%</span>
+                    <span>100%</span>
+                </div>
+            </div>
+
+            <button class="cyber-btn" onclick="goToCalc()">Run Analysis</button>
+        </div>
+    </div>
+
+    <!-- PAGE 3: CALCULATION / RESULT -->
+    <div id="page-3" class="page">
+        <div class="page-content-wrapper">
+            
+            <!-- LOADER STATE -->
+            <div id="calcLoader" style="display: block; text-align: center;">
+                <div class="loader-ring"></div>
+                <p style="color: var(--neon-blue); letter-spacing: 2px;">SIMULATING CURVE...</p>
+            </div>
+
+            <!-- RESULT STATE -->
+            <div id="calcResult" style="display: none; width: 100%; text-align: center;">
+                <div style="border: 1px solid var(--neon-green); background: rgba(0,255,157,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 10px;">TIME TO 80%</div>
+                    <div class="timer-huge" id="predictedTime" style="font-size: 4rem;">00</div>
+                    <div class="timer-unit">MINUTES</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                        <div style="color: var(--neon-green); font-size: 1.2rem; font-weight: 700;" id="mahAdded">0</div>
+                        <div style="font-size: 0.7rem; color: #aaa;">mAh ADDED</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                        <div style="color: var(--neon-blue); font-size: 1.2rem; font-weight: 700;">Optimal</div>
+                        <div style="font-size: 0.7rem; color: #aaa;">TEMP ZONE</div>
+                    </div>
+                </div>
+
+                <button class="cyber-btn" onclick="startAlarm()">Start Timer</button>
+                <button class="cyber-btn secondary" onclick="navigate('page-3', 'page-2')">Adjust Config</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PAGE 4: ACTIVE TIMER -->
+    <div id="page-4" class="page">
+        <div class="page-content-wrapper">
+            
+            <div class="bell-wrapper">
+                <div id="bell" class="bell-icon">🔔</div>
+            </div>
+            
+            <div class="alarm-status" id="statusText" style="color: var(--neon-green); letter-spacing: 3px; font-weight: 700;">MONITORING</div>
+
+            <div class="timer-huge" id="countdownDisplay">00:00</div>
+
+            <!-- Progress Bar -->
+            <div style="width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 40px; box-shadow: 0 0 10px #000 inset;">
+                <div id="progressBar" style="width: 100%; height: 100%; background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green);"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <button id="stopBtn" class="cyber-btn stop" style="display: none;" onclick="stopAlarm()">STOP ALARM</button>
+            <button id="cancelBtn" class="cyber-btn secondary" onclick="cancelTimer()">Cancel Timer</button>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- PARTICLE BACKGROUND ---
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Initial Resize
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Particle Logic
+    const particles = [];
+    const particleCount = 60;
+
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.vx = (Math.random() - 0.5) * 0.5;
+            this.vy = (Math.random() - 0.5) * 0.5;
+            this.size = Math.random() * 2;
+            this.color = Math.random() > 0.5 ? '#00ff9d' : '#00d2ff';
+        }
+        update() {
+            this.x += this.vx; this.y += this.vy;
+            if(this.x < 0) this.x = canvas.width;
+            if(this.x > canvas.width) this.x = 0;
+            if(this.y < 0) this.y = canvas.height;
+            if(this.y > canvas.height) this.y = 0;
+        }
+        draw() {
+            ctx.beginPath();
+            ctx.fillStyle = this.color;
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    for(let i=0; i<particleCount; i++) particles.push(new Particle());
+
+    function animate() {
+        ctx.fillStyle = 'rgba(5, 5, 5, 0.1)'; // Trail effect
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+
+    // --- AUDIO SYSTEM (SOUNDS) ---
+    let audioCtx = null;
+
+    // Helper to play short UI sounds
+    function playSound(type) {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if(type === 'swish') {
+            // Navigation Swish
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        } else if (type === 'ping') {
+            // Success Ping
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523, audioCtx.currentTime); // C5
+            osc.frequency.exponentialRampToValueAtTime(1046, audioCtx.currentTime + 0.1); // C6
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+        }
+    }
+
+
+    // --- APP LOGIC ---
+
+    // 1. Splash Screen
+    window.onload = () => {
+        document.getElementById('loadBar').style.width = '100%';
+        setTimeout(() => navigate('page-1', 'page-2'), 2600);
+    };
+
+    function navigate(fromId, toId) {
+        playSound('swish');
+        const fromPage = document.getElementById(fromId);
+        const toPage = document.getElementById(toId);
+        
+        fromPage.style.opacity = '0';
+        fromPage.style.transform = 'scale(0.95)';
+        fromPage.style.pointerEvents = 'none';
+
+        setTimeout(() => {
+            fromPage.classList.remove('active');
+            toPage.classList.add('active');
+            
+            // Trigger Reflow
+            void toPage.offsetWidth;
+            
+            toPage.style.opacity = '1';
+            toPage.style.transform = 'scale(1)';
+            toPage.style.pointerEvents = 'all';
+        }, 500);
+    }
+
+    // 2. Input Handling
+    function updateSlider(val) {
+        const disp = document.getElementById('percentDisp');
+        disp.innerText = val + '%';
+        if(val < 20) disp.style.color = '#ff0055';
+        else if(val >= 80) disp.style.color = '#ffa502';
+        else disp.style.color = '#00ff9d';
+    }
+
+    function autoFill() {
+        const type = document.getElementById('deviceType').value;
+        const cap = document.getElementById('capacity');
+        if(type === 'phone') cap.value = 4500;
+        if(type === 'tablet') cap.value = 8000;
+        if(type === 'laptop') cap.value = 5000;
+    }
+
+    // 3. Calculation Logic
+    let totalSeconds = 0;
+
+    function goToCalc() {
+        const current = parseInt(document.getElementById('slider').value);
+        const capacity = parseInt(document.getElementById('capacity').value);
+        const watts = parseInt(document.getElementById('wattage').value);
+        const target = 80;
+
+        if(current >= target) {
+            alert("Battery is already in healthy range (80%+). Unplug to save health!");
+            return;
+        }
+
+        navigate('page-2', 'page-3');
+        
+        // Show Loader
+        document.getElementById('calcLoader').style.display = 'block';
+        document.getElementById('calcResult').style.display = 'none';
+
+        // Calculate Physics
+        // Wh needed = (mAh * V / 1000) * %needed
+        let voltage = 3.85; 
+        if(document.getElementById('deviceType').value === 'laptop') voltage = 11.4;
+        
+        const percentNeeded = (target - current) / 100;
+        const energyWh = (capacity * voltage / 1000) * percentNeeded;
+        const efficiency = 0.85; // Heat loss factor
+
+        // Time in minutes
+        let minutes = Math.ceil((energyWh / (watts * efficiency)) * 60);
+        if(minutes < 1) minutes = 1;
+        
+        totalSeconds = minutes * 60; // Set global for timer
+
+        // Update UI after delay
+        setTimeout(() => {
+            document.getElementById('calcLoader').style.display = 'none';
+            document.getElementById('calcResult').style.display = 'block';
+            
+            // Animate Number
+            document.getElementById('predictedTime').innerText = minutes;
+            document.getElementById('mahAdded').innerText = Math.round(capacity * percentNeeded);
+            playSound('ping');
+        }, 2000);
+    }
+
+
+    // --- ALARM LOGIC (ROBUST) ---
+    let timerInterval = null;
+    let alarmInterval = null;
+
+    function initSilentAudio() {
+        // Essential for mobile browsers to "unlock" audio
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.001; // Silent
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function startAlarm() {
+        initSilentAudio(); // Wake up audio engine
+        navigate('page-3', 'page-4');
+        
+        // Reset UI States
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('cancelBtn').style.display = 'block';
+        document.getElementById('bell').classList.remove('ringing');
+        document.getElementById('statusText').innerText = "MONITORING";
+        document.getElementById('statusText').style.color = "var(--neon-green)";
+        document.getElementById('bell').style.color = "var(--text-main)";
+
+        let remaining = totalSeconds;
+        // remaining = 5; // UNCOMMENT TO TEST ALARM QUICKLY (5 seconds)
+        const duration = remaining;
+
+        timerInterval = setInterval(() => {
+            remaining--;
+
+            // Update Time Text
+            let m = Math.floor(remaining / 60);
+            let s = remaining % 60;
+            document.getElementById('countdownDisplay').innerText = 
+                `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            
+            // Update Bar
+            let pct = (remaining / duration) * 100;
+            document.getElementById('progressBar').style.width = pct + "%";
+
+            if(remaining <= 0) {
+                triggerRing();
+            }
+        }, 1000);
+    }
+
+    function triggerRing() {
+        clearInterval(timerInterval);
+        
+        // Visuals
+        document.getElementById('countdownDisplay').innerText = "00:00";
+        document.getElementById('statusText').innerText = "UNPLUG DEVICE";
+        document.getElementById('statusText').style.color = "var(--neon-red)";
+        document.getElementById('bell').classList.add('ringing');
+        document.getElementById('stopBtn').style.display = 'block';
+        document.getElementById('cancelBtn').style.display = 'none';
+
+        // Audio Loop
+        playAlarmBeep();
+        alarmInterval = setInterval(playAlarmBeep, 800); // Beep every 0.8s
+    }
+
+    function playAlarmBeep() {
+        if(!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        // Harsh Square Wave for Alarm
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.1);
+        
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+
+        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+    }
+
+    function stopAlarm() {
+        clearInterval(alarmInterval);
+        document.getElementById('bell').classList.remove('ringing');
+        location.reload(); // Reset App
+    }
+
+    function cancelTimer() {
+        clearInterval(timerInterval);
+        navigate('page-4', 'page-2');
+    }
+
+</script>
+
+</body>
+</html>
